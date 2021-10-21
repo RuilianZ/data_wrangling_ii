@@ -156,3 +156,66 @@ str_detect(string_vec, "\\[")
 ```
 
     ## [1]  TRUE FALSE  TRUE  TRUE
+
+## Why factors are wierd
+
+``` r
+factor_vec = factor(c("male", "male", "female", "female"))
+as.numeric(factor_vec) # 2 for second level and 1 for first level
+```
+
+    ## [1] 2 2 1 1
+
+``` r
+factor_vec = fct_relevel(factor_vec, "male") # change levels
+as.numeric(factor_vec)
+```
+
+    ## [1] 1 1 2 2
+
+## NSDUH
+
+``` r
+nsduh_url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
+
+table_marj = 
+  read_html(nsduh_url) %>% 
+  html_table() %>% 
+  first() %>% 
+  slice(-1)
+```
+
+Let’s clean this up!
+
+``` r
+marj_df = 
+  table_marj %>% 
+  select(-contains("P Value")) %>% 
+  pivot_longer(
+    -State,
+    names_to = "age_year",
+    values_to = "percent"
+  ) %>% 
+  separate(age_year, into = c("age", "year"), "\\(") %>% 
+  mutate(
+    year = str_replace(year, "\\)", ""),
+    percent = str_replace(percent, "[a-c]$", ""),
+    percent = as.numeric(percent)
+  ) %>% 
+  filter(!(State %in% c("Total U.S.", "Northeast", "Midwest", "South", "West")))
+```
+
+Do dataframe stuff
+
+``` r
+marj_df %>% 
+  filter(age == "12-17") %>% 
+  mutate(
+    State = fct_reorder(State, percent)
+  ) %>% 
+  ggplot(aes(x = State, y = percent, color = year)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) # angle = 90 rotate x tick labels
+```
+
+![](strings_and_factors_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
